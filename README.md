@@ -5,21 +5,26 @@ Simple leaderboard API for games.
 See client.py for examples.
 
 ## API
-We use coded messages. Code is an 16-bit integer.
+We use codes and [lithium message structure](httsp://github.com/slimebones/lithium). Code is a 16-bit integer. As soon as you connected, you can send any available starts, and receive back reacts.
+
+Start message format: `<code>;<body_0>;<body_1>;<body...>;<body_n>`
+React message format: `<start_code>;<body_0>;<body_1>;<body...>;<body_n>`
+
+By knowing start codes, you know start and react body structures, since there are single defined react body structure per start code.
+
+Both client and server can send start and react messages, but in case of this app, start sending is mostly done by the client.
 
 ### 0: send_record
-#### Args
+#### Body
 1. author: str - allowed regex `[A-z0-9\-_]{2,25}`
 2. val: float64
 
 ### 1: get_top_records
-#### Args
+#### Body
 1. amount: int32 - how many records from the top to fetch
 
-#### Returns
-Comma-separated list of 10 record objects,  e.g.:
-* `Request: 1 3` - get top 3 records
-* `Response: author=alex val=10, author=ray val=7.5, author=sonny val=3`
+#### React
+Comma-separated list of `amount` record objects: `{author: str, val: float}`.
 
 
 ## References
