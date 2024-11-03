@@ -8,8 +8,8 @@
 #include <windows.h>
 
 enum Code {
-    SendRecord,
-    GetRecordsTop10,
+    send_record,
+    get_top_records,
 };
 typedef struct {
     char* author;
