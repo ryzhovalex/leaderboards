@@ -1,6 +1,84 @@
 #include "main.h"
 
-int main() {
+void _loop(SOCKET);
+void _loop(SOCKET listen_socket) {
+    // We continiously listen for incoming connections. Once a new connection
+    // arrive, we grab the initial sent data, return response, and close
+    // the connection.
+    while (1) {
+        // After socket is bound, we should listen on that addr for incoming
+        // connection requests
+        if (listen(listen_socket, SOMAXCONN) == SOCKET_ERROR) {
+            closesocket(listen_socket);
+            panic("Failed listen");
+        }
+
+        SOCKET client_socket;
+        // In the best case we listen, accept, then pass the accepted connection to
+        // a separate thread, then continue listening.
+        client_socket = accept(listen_socket, nil, nil);
+        if (client_socket == INVALID_SOCKET) {
+            closesocket(listen_socket);
+            panic("Failed accept");
+        }
+
+        #define DEFAULT_BUFLEN 512
+        char recvbuf[DEFAULT_BUFLEN];
+        int recv_result, send_result;
+        int recvbuflen = DEFAULT_BUFLEN;
+        // The send and recv functions both return an integer value of the number
+        // of bytes sent or received, respectively, or an erro. Each function also
+        // takes the same parameters: the active socket, a char buffer, the number
+        // of bytes to send or receive, and any flags to use.
+        do {
+            recv_result = recv(client_socket, recvbuf, recvbuflen, 0);
+            if (recv_result > 0) {
+                // printf("[I] Bytes received: %d\n", recv_result);
+                char* parts = strtok(recvbuf, " ");
+                int i = 0;
+                while (parts) {
+                    if (i == 0) {
+                        int code = atoi(parts);
+                        printf("%d\n", code);
+                    }
+                    // Don't know how it works, for now, taken from https://en.cppreference.com/w/c/string/byte/strtok
+                    parts = strtok(nil, " ");
+                    i++;
+                }
+                // printf("%s \n", &parts);
+                // Echo the buffer back to the sender
+                send_result = send(client_socket, recvbuf, recv_result, 0);
+                if (send_result == SOCKET_ERROR) {
+                    closesocket(client_socket);
+                    panic("Failed send");
+                }
+                // printf("[I] Bytes sent: %d\n", send_result);
+            } else {
+                closesocket(client_socket);
+            }
+        } while (recv_result > 0);
+    }
+}
+
+void info(const char *s) {
+    printf("[I] %s\n", s);
+}
+
+void panic(const char *s) {
+    printf("[E] %s\n", s);
+    WSACleanup();
+    exit(EXIT_FAILURE);
+}
+
+void _on_sigint(int);
+void _on_sigint(int sig) {
+    signal(SIGINT, _on_sigint);
+    printf("[I] Interrupting...\n");
+    exit(0);
+}
+
+DWORD WINAPI _boot_socket();
+DWORD WINAPI _boot_socket() {
     WSADATA wsa_data;
     if (WSAStartup(MAKEWORD(2, 2), &wsa_data) == SOCKET_ERROR) {
         panic("Unable to startup");
@@ -39,57 +117,17 @@ int main() {
 
     // Once bind is called the address information is no longer needed
     freeaddrinfo(ai_result);
+    _loop(listen_socket);
+}
 
-    // After socket is bound, we should listen on that addr for incoming
-    // connection requests
-    if (listen(listen_socket, SOMAXCONN) == SOCKET_ERROR) {
-        closesocket(listen_socket);
-        panic("Listen failed");
-    }
-
-    SOCKET client_socket;
-    // In the best case we listen, accept, then pass the accepted connection to
-    // a separate thread, then continue listening.
-    client_socket = accept(listen_socket, nil, nil);
-    if (client_socket == INVALID_SOCKET) {
-        closesocket(listen_socket);
-        panic("Accept failed");
-    }
-
-    #define DEFAULT_BUFLEN 512
-    char recvbuf[DEFAULT_BUFLEN];
-    int recv_result, send_result;
-    int recvbuflen = DEFAULT_BUFLEN;
-    // The send and recv functions both return an integer value of the number
-    // of bytes sent or received, respectively, or an erro. Each function also
-    // takes the same parameters: the active socket, a char buffer, the number
-    // of bytes to send or receive, and any flags to use.
-    do {
-        recv_result = recv(client_socket, recvbuf, recvbuflen, 0);
-        if (recv_result > 0 ) {
-            printf("[I] Bytes received: %d", recv_result);
-            // Echo the buffer back to the sender
-            send_result = send(client_socket, recvbuf, recv_result, 0);
-            if (send_result == SOCKET_ERROR) {
-                closesocket(client_socket);
-                panic("Failed send");
-            }
-            printf("[I] Bytes sent: %d", send_result);
-        } else if (recv_result == 0) {
-            info("Closing connection");
-        } else {
-            closesocket(client_socket);
-            panic("Failed recv");
+int main() {
+    HANDLE thread = CreateThread(nil, 0, _boot_socket, nil, 0, nil);
+    char cmd[8];
+    while (1) {
+        printf("> ");
+        scanf("%s", cmd);
+        if (strcmp(cmd, "q") == 0) {
+            exit(0);
         }
-    } while (recv_result > 0);
-}
-
-void info(const char *s) {
-    printf("[I] %s\n", s);
-}
-
-void panic(const char *s) {
-    printf("[E] %s\n", s);
-    WSACleanup();
-    exit(EXIT_FAILURE);
+    }
 }

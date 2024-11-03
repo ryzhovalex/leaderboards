@@ -4,17 +4,17 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+#include <signal.h>
+#include <windows.h>
 
+enum Code {
+    SendRecord,
+    GetRecordsTop10,
+};
 typedef struct {
-    int type;
-    char* val;
-    int len;
-} Request;
-typedef struct {
-    char* header;
-    char* filename, filepath;
-    int err;
-} Response;
+    char* author;
+    float val;
+} Record;
 
 #define nil NULL
 #define DEFAULT_PORT "3000"
