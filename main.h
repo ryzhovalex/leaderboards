@@ -18,5 +18,6 @@ typedef struct {
 
 #define nil NULL
 #define DEFAULT_PORT "3000"
+#define DEFAULT_BUFLEN 512
 extern void panic(const char*);
 extern void info(const char*);

@@ -2,6 +2,13 @@
 
 void _loop(SOCKET);
 void _loop(SOCKET listen_socket) {
+    int code;
+    // We support up to 4 arguments
+    char* arg0 = malloc(DEFAULT_BUFLEN * sizeof(char));
+    char* arg1 = malloc(DEFAULT_BUFLEN * sizeof(char));
+    char* arg2 = malloc(DEFAULT_BUFLEN * sizeof(char));
+    char* arg3 = malloc(DEFAULT_BUFLEN * sizeof(char));
+
     // We continiously listen for incoming connections. Once a new connection
     // arrive, we grab the initial sent data, return response, and close
     // the connection.
@@ -22,14 +29,14 @@ void _loop(SOCKET listen_socket) {
             panic("Failed accept");
         }
 
-        #define DEFAULT_BUFLEN 512
-        char recvbuf[DEFAULT_BUFLEN];
+        char* recvbuf = malloc(DEFAULT_BUFLEN * sizeof(char));
         int recv_result, send_result;
         int recvbuflen = DEFAULT_BUFLEN;
         // The send and recv functions both return an integer value of the number
         // of bytes sent or received, respectively, or an erro. Each function also
         // takes the same parameters: the active socket, a char buffer, the number
         // of bytes to send or receive, and any flags to use.
+
         do {
             recv_result = recv(client_socket, recvbuf, recvbuflen, 0);
             if (recv_result > 0) {
@@ -37,15 +44,29 @@ void _loop(SOCKET listen_socket) {
                 char* parts = strtok(recvbuf, " ");
                 int i = 0;
                 while (parts) {
-                    if (i == 0) {
-                        int code = atoi(parts);
-                        printf("%d\n", code);
+                    switch (i) {
+                        case 0:
+                            code = atoi(parts);
+                            break;
+                        case 1:
+                            arg0 = parts;
+                            break;
+                        case 2:
+                            arg1 = parts;
+                            break;
+                        case 3:
+                            arg2 = parts;
+                            break;
+                        case 4:
+                            arg3 = parts;
+                            break;
                     }
-                    // Don't know how it works, for now, taken from https://en.cppreference.com/w/c/string/byte/strtok
+                    // Don't know how it works, for now,
+                    // taken from: https://en.cppreference.com/w/c/string/byte/strtok
                     parts = strtok(nil, " ");
                     i++;
                 }
-                // printf("%s \n", &parts);
+                printf("Code: %d, Args: %s, %s, %s, %s\n", code, arg0, arg1, arg2, arg3);
                 // Echo the buffer back to the sender
                 send_result = send(client_socket, recvbuf, recv_result, 0);
                 if (send_result == SOCKET_ERROR) {
