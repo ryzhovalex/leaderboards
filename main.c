@@ -1,9 +1,4 @@
-#include <winsock2.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
 #include "main.h"
-#include <stdbool.h>
 
 int main() {
     WSADATA wsa_data;
@@ -12,11 +7,14 @@ int main() {
     }
 
     struct addrinfo *ai_result = NULL, *ptr = NULL, hints;
+    ZeroMemory(&hints, sizeof(hints));
     // Fill in the address structure, AF_INET = IPv4
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_protocol = IPPROTO_TCP;
     hints.ai_flags = AI_PASSIVE;
+    // DEFAULT_PORT must be a string! If i write a number, it crashes with
+    // STATUS_ACCESS_VIOLATION
     int r = getaddrinfo(NULL, DEFAULT_PORT, &hints, &ai_result);
     if (r != 0) {
         panic(sprintf("Invalid socket (%d)", r));
@@ -48,6 +46,42 @@ int main() {
         closesocket(listen_socket);
         panic(sprintf("Listen failed (%d)", WSAGetLastError()));
     }
+
+    SOCKET client_socket;
+    // In the best case we listen, accept, then pass the accepted connection to
+    // a separate thread, then continue listening.
+    client_socket = accept(listen_socket, nil, nil);
+    if (client_socket == INVALID_SOCKET) {
+        closesocket(listen_socket);
+        panic(sprintf("Accept failed (%d)", WSAGetLastError()));
+    }
+
+    #define DEFAULT_BUFLEN 512
+    char recvbuf[DEFAULT_BUFLEN];
+    int recv_result, send_result;
+    int recvbuflen = DEFAULT_BUFLEN;
+    // The send and recv functions both return an integer value of the number
+    // of bytes sent or received, respectively, or an erro. Each function also
+    // takes the same parameters: the active socket, a char buffer, the number
+    // of bytes to send or receive, and any flags to use.
+    do {
+        recv_result = recv(client_socket, recvbuf, recvbuflen, 0);
+        if (recv_result > 0 ) {
+            info(sprintf("Bytes received %d", r));
+            // Echo the buffer back to the sender
+            send_result = send(client_socket, recvbuf, recv_result, 0);
+            if (send_result == SOCKET_ERROR) {
+                closesocket(client_socket);
+                panic(sprintf("Failed send (%d)", WSAGetLastError()));
+            }
+            info(sprintf("Bytes sent %d", send_result));
+        } else if (recv_result == 0) {
+            info("Closing connection");
+        } else {
+            closesocket(client_socket);
+            panic(sprintf("Failed recv (%d)", WSAGetLastError()));
+        }
+    } while (recv_result > 0);
 }
 
 void info(const char *s) {

@@ -5,4 +5,7 @@ run: compile
 
 compile:
     @ mkdir bin
-    @ cc main.c -o bin/main.exe
+    @ cc main.c -lws2_32 -o bin/main.exe
+
+client_connect:
+    python client.py
