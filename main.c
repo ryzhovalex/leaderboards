@@ -3,7 +3,7 @@
 int main() {
     WSADATA wsa_data;
     if (WSAStartup(MAKEWORD(2, 2), &wsa_data) == SOCKET_ERROR) {
-        panic(sprintf("Unable to startup (wsa::%d)", WSAGetLastError()));
+        panic("Unable to startup");
     }
 
     struct addrinfo *ai_result = NULL, *ptr = NULL, hints;
@@ -17,7 +17,7 @@ int main() {
     // STATUS_ACCESS_VIOLATION
     int r = getaddrinfo(NULL, DEFAULT_PORT, &hints, &ai_result);
     if (r != 0) {
-        panic(sprintf("Invalid socket (%d)", r));
+        panic("Invalid socket");
     }
 
     SOCKET listen_socket = socket(
@@ -27,14 +27,14 @@ int main() {
     );
     if (listen_socket == INVALID_SOCKET) {
         freeaddrinfo(ai_result);
-        panic(sprintf("Invalid socket (%d)", WSAGetLastError()));
+        panic("Invalid socket");
     }
 
     r = bind(listen_socket, ai_result->ai_addr, (int)ai_result->ai_addrlen);
     if (r == SOCKET_ERROR) {
         freeaddrinfo(ai_result);
         closesocket(listen_socket);
-        panic(sprintf("Bind failed (%d)", WSAGetLastError()));
+        panic("Bind failed");
     }
 
     // Once bind is called the address information is no longer needed
@@ -44,7 +44,7 @@ int main() {
     // connection requests
     if (listen(listen_socket, SOMAXCONN) == SOCKET_ERROR) {
         closesocket(listen_socket);
-        panic(sprintf("Listen failed (%d)", WSAGetLastError()));
+        panic("Listen failed");
     }
 
     SOCKET client_socket;
@@ -53,7 +53,7 @@ int main() {
     client_socket = accept(listen_socket, nil, nil);
     if (client_socket == INVALID_SOCKET) {
         closesocket(listen_socket);
-        panic(sprintf("Accept failed (%d)", WSAGetLastError()));
+        panic("Accept failed");
     }
 
     #define DEFAULT_BUFLEN 512
@@ -67,19 +67,19 @@ int main() {
     do {
         recv_result = recv(client_socket, recvbuf, recvbuflen, 0);
         if (recv_result > 0 ) {
-            info(sprintf("Bytes received %d", r));
+            printf("[I] Bytes received: %d", recv_result);
             // Echo the buffer back to the sender
             send_result = send(client_socket, recvbuf, recv_result, 0);
             if (send_result == SOCKET_ERROR) {
                 closesocket(client_socket);
-                panic(sprintf("Failed send (%d)", WSAGetLastError()));
+                panic("Failed send");
             }
-            info(sprintf("Bytes sent %d", send_result));
+            printf("[I] Bytes sent: %d", send_result);
         } else if (recv_result == 0) {
             info("Closing connection");
         } else {
             closesocket(client_socket);
-            panic(sprintf("Failed recv (%d)", WSAGetLastError()));
+            panic("Failed recv");
         }
     } while (recv_result > 0);
 }
